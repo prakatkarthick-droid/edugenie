@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4f46e5"><title>EduGenie — Your AI Learning Companion</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/" aria-label="EduGenie home"><span class="brand-icon">✦</span> EduGenie</a><span class="top-note">Your personal learning companion</span></header>
+  <main class="layout">
+    <section class="hero"><div class="eyebrow">LEARN SMARTER WITH AI</div><h1>Curiosity meets<br><span>clarity.</span></h1><p>Ask questions, understand difficult concepts, test your knowledge, and build a learning path — all in one place.</p><div class="feature-row"><span>✧ Simple explanations</span><span>✧ Quick revision</span><span>✧ Personalized learning</span></div></section>
+    <section class="workspace card">
+      <div class="section-heading"><div><div class="eyebrow">STUDY STUDIO</div><h2>What would you like to learn?</h2></div><span class="status-dot">Ready to help</span></div>
+      <form id="study-form">
+        <label for="task">Choose a learning tool</label>
+        <select id="task" name="task"><option value="explain">Explain a concept</option><option value="qa">Ask a question (Q&amp;A)</option><option value="quiz">Generate a quiz</option><option value="summarize">Summarize a passage</option><option value="learn/recommendations">Build a learning path</option></select>
+        <label for="level">Your current level</label>
+        <select id="level" name="level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+        <label for="study-input">Topic, question, or text</label>
+        <textarea id="study-input" name="text" rows="6" maxlength="20000" placeholder="For example: Explain the Pythagoras theorem with an easy example…" required></textarea>
+        <div class="form-footer"><span id="char-count">0 / 20,000</span><button id="submit-button" type="submit"><span>Generate answer</span><span aria-hidden="true">→</span></button></div>
+      </form>
+      <div id="error-box" class="notice error" role="alert" hidden></div>
+      <section id="result-section" class="result-section" aria-live="polite" hidden><div class="result-heading"><h3 id="result-title">Your result</h3><button id="copy-button" class="copy-button" type="button">Copy result</button></div><div id="result-content" class="result-content"></div></section>
+    </section>
+    <section class="examples"><div class="eyebrow">NEED AN IDEA?</div><div class="example-grid"><button class="example" data-task="qa" data-text="Which is the largest ocean in the world?">🌊 <span><b>Ask a question</b><small>Which is the largest ocean?</small></span><span class="arrow">↗</span></button><button class="example" data-task="quiz" data-text="The Pythagorean theorem states that in a right triangle, the square of the hypotenuse equals the sum of the squares of the other two sides.">🧠 <span><b>Test your knowledge</b><small>Quiz: Pythagoras theorem</small></span><span class="arrow">↗</span></button><button class="example" data-task="learn/recommendations" data-text="SQL database querying, from beginner to advanced">🗺️ <span><b>Plan your learning</b><small>Start learning SQL</small></span><span class="arrow">↗</span></button></div></section>
+    <footer>Made for curious minds · EduGenie <span>AI can make mistakes — verify important information.</span></footer>
+  </main>
+  <script>
+  const form = document.querySelector('#study-form');
+  const input = document.querySelector('#study-input');
+  const task = document.querySelector('#task');
+  const level = document.querySelector('#level');
+  const submitButton = document.querySelector('#submit-button');
+  const errorBox = document.querySelector('#error-box');
+  const resultSection = document.querySelector('#result-section');
+  const resultContent = document.querySelector('#result-content');
+  const resultTitle = document.querySelector('#result-title');
+  const charCount = document.querySelector('#char-count');
+  const titles = {explain:'Simple explanation', qa:'Answer', quiz:'Your quiz', summarize:'Summary', 'learn/recommendations':'Your learning path'};
+  input.addEventListener('input', () => charCount.textContent = `${input.value.length.toLocaleString()} / 20,000`);
+  document.querySelectorAll('.example').forEach(button => button.addEventListener('click', () => {
+    task.value = button.dataset.task; input.value = button.dataset.text; charCount.textContent = `${input.value.length} / 20,000`; input.focus();
+    document.querySelector('.workspace').scrollIntoView({behavior:'smooth', block:'start'});
+  }));
+  function addText(parent, value, className) { const el = document.createElement('p'); if (className) el.className = className; el.textContent = value; parent.appendChild(el); }
+  function renderResult(taskName, result) {
+    resultContent.replaceChildren(); resultTitle.textContent = titles[taskName] || 'Your result';
+    if (taskName === 'quiz' && Array.isArray(result)) {
+      result.forEach((question, index) => {
+        const card = document.createElement('article'); card.className = 'quiz-card';
+        const heading = document.createElement('h4'); heading.textContent = `${index + 1}. ${question.question}`; card.appendChild(heading);
+        const options = document.createElement('div'); options.className = 'quiz-options';
+        question.options.forEach((option, optionIndex) => {
+          const label = document.createElement('label'); label.className = 'quiz-option';
+          const radio = document.createElement('input'); radio.type = 'radio'; radio.name = `question-${index}`; radio.value = option;
+          const span = document.createElement('span'); span.textContent = `${String.fromCharCode(65 + optionIndex)}. ${option}`;
+          const feedback = document.createElement('small'); feedback.className = 'quiz-feedback'; feedback.hidden = true;
+          radio.addEventListener('change', () => {
+            options.querySelectorAll('input').forEach(item => item.disabled = true);
+            const correct = option === question.answer;
+            label.classList.add(correct ? 'correct' : 'incorrect');
+            feedback.hidden = false; feedback.textContent = correct ? 'Correct!' : `Correct answer: ${question.answer}`;
+            if (question.explanation) addText(card, question.explanation, 'quiz-explanation');
+          });
+          label.append(radio, span, feedback); options.appendChild(label);
+        }); card.appendChild(options); resultContent.appendChild(card);
+      });
+    } else {
+      const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+      text.split('\n').forEach(line => { const p = document.createElement('p'); p.textContent = line || '\u00a0'; resultContent.appendChild(p); });
+    }
+    resultSection.hidden = false;
+  }
+  form.addEventListener('submit', async event => {
+    event.preventDefault(); errorBox.hidden = true; resultSection.hidden = true;
+    const text = input.value.trim(); if (!text) { errorBox.textContent = 'Please enter a topic, question, or passage.'; errorBox.hidden = false; return; }
+    submitButton.disabled = true; submitButton.innerHTML = '<span class="spinner"></span><span>Thinking…</span>';
+    try {
+      const response = await fetch('/' + task.value, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, level:level.value})});
+      const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Something went wrong. Please try again.');
+      renderResult(task.value, data.result); resultSection.scrollIntoView({behavior:'smooth', block:'nearest'});
+    } catch (error) { errorBox.textContent = error.message || 'Could not connect to EduGenie. Check that the server is running.'; errorBox.hidden = false; }
+    finally { submitButton.disabled = false; submitButton.innerHTML = '<span>Generate answer</span><span aria-hidden="true">→</span>'; }
+  });
+  document.querySelector('#copy-button').addEventListener('click', async () => {
+    const text = resultContent.innerText;
+    try { await navigator.clipboard.writeText(text); document.querySelector('#copy-button').textContent = 'Copied!'; setTimeout(() => document.querySelector('#copy-button').textContent = 'Copy result', 1400); }
+    catch { errorBox.textContent = 'Clipboard access is unavailable in this browser.'; errorBox.hidden = false; }
+  });
+  </script>
+</body></html>
